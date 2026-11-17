@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Study Buddy</title>
+  <script>
+    // set the theme before anything paints, so there's no flash
+    (function () {
+      var t; try { t = localStorage.getItem("theme"); } catch (e) {}
+      if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3CradialGradient id='g' cx='.35' cy='.3' r='.8'%3E%3Cstop offset='0' stop-color='%23F3DDFF'/%3E%3Cstop offset='.45' stop-color='%23B45CFF'/%3E%3Cstop offset='1' stop-color='%235A1FD1'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='16' cy='16' r='14' fill='url(%23g)'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,400&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="backdrop" aria-hidden="true"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="orb orb-sm" aria-hidden="true"></span>
+      <span class="brand-name">Study Buddy</span>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <span class="tab-thumb" aria-hidden="true"></span>
+      <button role="tab" aria-selected="true" data-view="chat" type="button">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.6 4.3 4.4 1.6-4.4 1.6L10 14.3 8.4 10 4 8.4l4.4-1.6zM15.5 13l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg>
+        Chat
+      </button>
+      <button role="tab" aria-selected="false" data-view="library" type="button">
+        Lectures <span class="tab-count" id="deckCount"></span>
+      </button>
+    </nav>
+
+    <div class="tools glass">
+      <div class="mode" role="radiogroup" aria-label="Who explains" data-mode="ollama">
+        <span class="mode-thumb" aria-hidden="true"></span>
+        <button role="radio" aria-checked="true" data-mode="ollama" type="button">Local</button>
+        <button role="radio" aria-checked="false" data-mode="gemini" type="button">Gemini</button>
+      </div>
+      <button class="tool-btn" id="themeBtn" type="button" aria-label="Switch to dark mode">
+        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>
+      </button>
+      <button class="tool-btn memory-btn" id="memoryBtn" type="button" aria-label="What I know about you" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4.5a3 3 0 0 0-3 3 3 3 0 0 0-2 5.2A3.2 3.2 0 0 0 7 17.5a2.5 2.5 0 0 0 5 .5V6a2 2 0 0 0-3-1.5Z"/><path d="M15 4.5a3 3 0 0 1 3 3 3 3 0 0 1 2 5.2 3.2 3.2 0 0 1-3 4.8 2.5 2.5 0 0 1-5 .5"/></svg>
+        <span class="memory-count" id="memoryCount">0</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="main" id="main">
+    <!-- Chat view -->
+    <section class="view chat-view is-empty" id="chatView" data-view="chat">
+      <div class="thread" id="thread" aria-live="polite">
+        <div class="notice" id="notice" role="status" hidden></div>
+        <div class="hero" id="hero">
+          <span class="orb orb-lg" aria-hidden="true"></span>
+          <h1>Hi, I'm Study Buddy</h1>
+          <p id="greeting">What are we studying tonight?</p>
+        </div>
+      </div>
+
+      <div class="dock" id="dock">
+        <form class="composer glass" id="composer" autocomplete="off">
+          <div class="field smooth-field">
+            <textarea id="input" rows="1" placeholder="Ask anything about your slides…" aria-label="Your question"></textarea>
+          </div>
+          <div class="composer-bar">
+            <button class="circle-btn" id="attachBtn" type="button" aria-label="Add lecture PDFs" title="Add lecture PDFs">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 9.5l-5.6 5.6a3.5 3.5 0 0 1-5-5l6-6a2.3 2.3 0 0 1 3.3 3.3l-5.9 5.9a1.2 1.2 0 0 1-1.7-1.7l5.3-5.3"/></svg>
+            </button>
+            <button class="pill" id="scopeBtn" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 4.5h4.2a2.3 2.3 0 0 1 2.3 2.3v9a1.8 1.8 0 0 0-1.8-1.8H3.5zM16.5 4.5h-4.2A2.3 2.3 0 0 0 10 6.8v9a1.8 1.8 0 0 1 1.8-1.8h4.7z"/></svg>
+              <span id="scopeLabel">All lectures</span>
+              <svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 8l4 4 4-4"/></svg>
+            </button>
+            <span class="spacer"></span>
+            <button class="send" id="send" type="submit" aria-label="Send">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 15.5V4.5M5 9.5l5-5 5 5"/></svg>
+            </button>
+          </div>
+        </form>
+        <div class="chips" id="actions">
+          <button type="button" class="chip" data-action="summary">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h7"/></svg>Summarize lecture
+          </button>
+          <button type="button" class="chip" data-action="quiz">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M8 8a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.7M10 13.6v.1"/></svg>Quiz me
+          </button>
+          <button type="button" class="chip" data-action="weak">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="10" r="3.5"/><circle cx="10" cy="10" r=".6"/></svg>Quiz my weak spots
+          </button>
+          <button type="button" class="chip" data-action="revise">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3.5v3M10 13.5v3M3.5 10h3M13.5 10h3M5.4 5.4l2 2M12.6 12.6l2 2M5.4 14.6l2-2M12.6 7.4l2-2"/></svg>What to revise first
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lectures view -->
+    <section class="view library-view" id="libraryView" data-view="library" hidden>
+      <div class="library-head">
+        <div>
+          <h2>Your lectures</h2>
+          <p class="muted">Drop PDFs anywhere on the page to add them. Click a lecture to flip through it.</p>
+        </div>
+      </div>
+      <div class="deck-grid" id="deckGrid">
+        <button class="deck-add" id="addCard" type="button">
+          <span class="add-icon"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></span>
+          <span>Add lecture PDFs</span>
+          <span class="muted small">PowerPoint? Export it as PDF first.</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <input type="file" id="fileInput" accept="application/pdf,.pdf,.ppt,.pptx" multiple hidden>
+
+  <!-- Floating side panel: slide viewer or memory -->
+  <aside class="panel glass-strong" id="panel" aria-hidden="true">
+    <div class="panel-body" id="viewer" hidden>
+      <header class="panel-head">
+        <div>
+          <h2 id="viewerTitle">Lecture</h2>
+          <p id="viewerPage" class="muted">Slide 1 of 1</p>
+        </div>
+        <button class="close-btn" data-close type="button" aria-label="Close">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>
+        </button>
+      </header>
+      <div class="slide-stage"><img id="stageImg" alt=""></div>
+      <div class="stage-controls">
+        <button class="circle-btn" id="prevSlide" type="button" aria-label="Previous slide">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5"/></svg>
+        </button>
+        <button class="primary" id="explainSlide" type="button">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5l1.6 4.3 4.4 1.6-4.4 1.6L10 14.3 8.4 10 4 8.4l4.4-1.6z"/></svg>
+          Explain this slide
+        </button>
+        <button class="circle-btn" id="nextSlide" type="button" aria-label="Next slide">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5"/></svg>
+        </button>
+      </div>
+      <div class="strip" id="strip"></div>
+    </div>
+
+    <div class="panel-body" id="memoryPanel" hidden>
+      <header class="panel-head">
+        <div>
+          <h2>What I know about you</h2>
+          <p class="muted" id="memoryMeta">Learned from our chats and your quizzes.</p>
+        </div>
+        <button class="close-btn" data-close type="button" aria-label="Close">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9"/></svg>
+        </button>
+      </header>
+      <p class="learning" id="learning" hidden><span class="dots"><i></i><i></i><i></i></span> Thinking about what you just learned</p>
+      <ul class="memories" id="memories"></ul>
+      <p class="memories-empty" id="memoriesEmpty">Nothing yet. Ask a few questions and I'll start noticing what clicks for you and what doesn't.</p>
+      <button class="ghost danger" id="forgetAll" type="button" hidden>Forget everything</button>
+    </div>
+  </aside>
+
+  <!-- Lecture picker -->
+  <div class="menu glass-strong" id="scopeMenu" role="listbox" aria-label="Which lectures to use" hidden></div>
+
+  <!-- Connect Gemini -->
+  <div class="modal" id="geminiModal" hidden>
+    <div class="modal-scrim" data-dismiss></div>
+    <form class="modal-card glass-strong" id="geminiForm" role="dialog" aria-modal="true" aria-labelledby="gTitle">
+      <span class="orb orb-md" aria-hidden="true"></span>
+      <h2 id="gTitle">Connect Gemini</h2>
+      <p class="muted" id="gIntro">Gemini explains harder topics better and reads diagrams well. It's free with a daily limit.</p>
+      <ol class="steps" id="gSteps">
+        <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> and sign in.</li>
+        <li>Click <b>Create API key</b> and copy it.</li>
+        <li>Paste it here. It's saved in your <code>.env</code> file on this laptop.</li>
+      </ol>
+      <div class="key-field smooth-field" id="keyWrap">
+        <input id="keyInput" type="password" placeholder="Paste your API key" aria-label="Gemini API key" spellcheck="false" autocomplete="off">
+        <button type="button" class="eye" id="keyEye" aria-label="Show key">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 10s3-5.5 8-5.5S18 10 18 10s-3 5.5-8 5.5S2 10 2 10Z"/><circle cx="10" cy="10" r="2.3"/></svg>
+        </button>
+      </div>
+      <p class="form-error" id="keyError" role="alert"></p>
+      <p class="muted small">On the free tier, Google may use your prompts to improve its products. Your memories always stay on this laptop.</p>
+      <div class="modal-actions">
+        <button type="button" class="ghost danger" id="keyRemove" hidden>Disconnect</button>
+        <span class="spacer"></span>
+        <button type="button" class="ghost" data-dismiss>Cancel</button>
+        <button type="submit" class="primary" id="keySave">Connect</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="dropzone" id="dropzone" aria-hidden="true">
+    <div class="drop-card">
+      <div class="drop-sheets" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p>Drop to add these lectures</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
