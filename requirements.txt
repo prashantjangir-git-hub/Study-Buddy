@@ -1,0 +1,12 @@
+starlette>=0.40
+uvicorn>=0.30
+python-multipart>=0.0.9
+requests>=2.31
+numpy>=1.26
+pypdfium2>=4.30
+pillow>=10.0
+python-dotenv>=1.0
+# the self-learning memory (same library as the video). If it fails to install,
+# delete these two lines: the app falls back to its built-in memory.
+mem0ai>=0.1.100
+ollama>=0.4
