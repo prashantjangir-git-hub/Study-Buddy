@@ -142,4 +142,8 @@ Your slides, memories and API key stay out of git (`data/` and `.env` are in `.g
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE).
+
+<div align="center">
+Made with ❤️ by Prashant Jangir
+</div>
